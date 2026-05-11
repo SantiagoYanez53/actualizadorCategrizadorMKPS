@@ -40,6 +40,7 @@ const procesarActualizacionStock = async (req, res) => {
             if (rowNumber > 1) { // Saltamos los encabezados (fila 1)
                 let sku = row.getCell(COL_MAESTRO_SKU).value;
                 let stock = row.getCell(COL_MAESTRO_STOCK).value;
+                const celdaSKU = row.getCell(COL_MAESTRO_SKU);
 
                 // Validamos que la celda no esté vacía
                 if (sku !== null && sku !== undefined) {
@@ -69,6 +70,7 @@ const procesarActualizacionStock = async (req, res) => {
        let actualizadosCoppel = 0;
         hojaCoppel.eachRow((row, rowNumber) => {
             if (rowNumber > 1) {
+                const celdaSku = row.getCell(COL_COPPEL_SKU)
                 let skuCoppel = row.getCell(COL_COPPEL_SKU).value;
                 
                 if (skuCoppel !== null && skuCoppel !== undefined) {
@@ -106,9 +108,11 @@ const procesarActualizacionStock = async (req, res) => {
         let actualizadosWalmart = 0;
         hojaWalmart.eachRow((row, rowNumber) => {
             if (rowNumber > 2) {
+                const celdaSKU = row.getCell(COL_WALMART_SKU).value;
                 let skuWalmart = row.getCell(COL_WALMART_SKU).value;
                 
                 if (skuWalmart !== null && skuWalmart !== undefined) {
+                    celdaSKU.numFmt = '@';
                     skuWalmart = String(skuWalmart).trim();
                     
                     // BUSCAMOS en el maestro
