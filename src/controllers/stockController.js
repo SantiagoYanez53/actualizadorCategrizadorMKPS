@@ -38,9 +38,10 @@ const procesarActualizacionStock = async (req, res) => {
 
         hojaMaestro.eachRow((row, rowNumber) => {
             if (rowNumber > 1) { // Saltamos los encabezados (fila 1)
+                const celdaSKU = row.getCell(COL_MAESTRO_SKU);
                 let sku = row.getCell(COL_MAESTRO_SKU).value;
                 let stock = row.getCell(COL_MAESTRO_STOCK).value;
-                const celdaSKU = row.getCell(COL_MAESTRO_SKU);
+                
 
                 // Validamos que la celda no esté vacía
                 if (sku !== null && sku !== undefined) {
@@ -58,43 +59,70 @@ const procesarActualizacionStock = async (req, res) => {
         console.log(`✅ Maestro procesado: ${skusLeidos} SKUs guardados en memoria.`);
 
         // -------------------------------------------------------------
-        // PASO 2: PROCESAR PLANTILLA DE COPPEL (Formato CSV)
+        // PASO 2: LEER PLANTILLA COPPEL EN XLSX Y EXPORTAR A CSV
         // -------------------------------------------------------------
-        const rutaPlantillaCoppel = path.join(__dirname, '../../templates/plantilla_coppel_stock.csv');
+        const rutaPlantillaCoppel = path.join(__dirname, '../../templates/plantilla_coppel_stock.xlsx');
         const libroCoppel = new ExcelJS.Workbook();
         
-        // Leemos el CSV
-        await libroCoppel.csv.readFile(rutaPlantillaCoppel);
-        const hojaCoppel = libroCoppel.getWorksheet(1);
+        // 1. Leemos la plantilla en formato estable XLSX
+        await libroCoppel.xlsx.readFile(rutaPlantillaCoppel);
+        const hojaCoppel = libroCoppel.worksheets[0];
 
-       let actualizadosCoppel = 0;
+        let actualizadosCoppel = 0;
+        const lineasCsvSalida = [];
+
+        // Extraemos los encabezados (Fila 1) de forma dinámica
+        // (ExcelJS devuelve un arreglo donde el índice 0 está vacío, usamos slice(1))
+        const filaEncabezados = hojaCoppel.getRow(1).values.slice(1);
+        lineasCsvSalida.push(filaEncabezados.join(','));
+
+        // 2. Recorremos los productos desde la fila 2
         hojaCoppel.eachRow((row, rowNumber) => {
-            if (rowNumber > 1) {
-                const celdaSku = row.getCell(COL_COPPEL_SKU)
-                let skuCoppel = row.getCell(COL_COPPEL_SKU).value;
+            if (rowNumber > 1) { // (O > 2 si tus datos empiezan en la fila 3)
+                const celdaSku = row.getCell(COL_COPPEL_SKU);
                 
+                // Extraemos el SKU aprovechando que en el XLSX viene estrictamente como Texto
+                let skuCoppel = celdaSku.text || celdaSku.value;
+
                 if (skuCoppel !== null && skuCoppel !== undefined) {
                     skuCoppel = String(skuCoppel).trim();
-                    
-                    // BUSCAMOS: Si este SKU existe en nuestro diccionario maestro...
+
+                    // Buscamos el stock en tu mapa maestro
+                    let nuevoStock = 0;
                     if (mapaStock[skuCoppel] !== undefined) {
-                        row.getCell(COL_COPPEL_STOCK).value = mapaStock[skuCoppel];
+                        nuevoStock = mapaStock[skuCoppel];
                         actualizadosCoppel++;
-                    } else {
-                        // OJO: Si el SKU no viene en el maestro, forzamos el stock a 0
-                        row.getCell(COL_COPPEL_STOCK).value = 0;
                     }
+
+                    // Construimos la fila para el CSV respetando todas las columnas
+                    const valoresFila = [];
+                    for (let colIdx = 1; colIdx <= filaEncabezados.length; colIdx++) {
+                        if (colIdx === COL_COPPEL_SKU) {
+                            // Inyectamos el SKU como texto crudo protegido
+                            valoresFila.push(skuCoppel);
+                        } else if (colIdx === COL_COPPEL_STOCK) {
+                            // Inyectamos el stock actualizado
+                            valoresFila.push(nuevoStock);
+                        } else {
+                            // Copiamos cualquier otra columna extra que tenga la plantilla
+                            let val = row.getCell(colIdx).text || row.getCell(colIdx).value || '';
+                            valoresFila.push(val);
+                        }
+                    }
+
+                    // Unimos los valores con comas y los mandamos al buffer de salida
+                    lineasCsvSalida.push(valoresFila.join(','));
                 }
             }
         });
 
-        // Guardamos el nuevo archivo CSV procesado en la carpeta uploads
+        // 3. Escribimos el archivo CSV final crudo directo al disco con 'fs' nativo
         const archivoSalidaCoppel = `Coppel_Stock_Listo_${Date.now()}.csv`;
         const rutaSalidaCoppel = path.join(__dirname, '../../uploads/', archivoSalidaCoppel);
-        await libroCoppel.csv.writeFile(rutaSalidaCoppel);
+        fs.writeFileSync(rutaSalidaCoppel, lineasCsvSalida.join('\n'), 'utf-8');
         
-        console.log(`✅ Coppel listo: ${actualizadosCoppel} SKUs actualizados.`);
-
+        console.log(`✅ Coppel listo (XLSX -> CSV): ${actualizadosCoppel} SKUs actualizados.`);
+        
         // -------------------------------------------------------------
         // PASO 3: PROCESAR PLANTILLA DE WALMART (Formato XLSX)
         // -------------------------------------------------------------
