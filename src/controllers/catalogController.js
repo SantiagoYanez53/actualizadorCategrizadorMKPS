@@ -60,7 +60,9 @@ async function generarCatalogos(req, res) {
         await libroWalmart.xlsx.readFile(rutaPlantillaWalmart);
 
         const hojaMaestro = libroMaestro.worksheets[0];
-        const hojaCoppel = libroCoppel.worksheets[0]; // Coppel usa una sola hoja
+        let hojaCoppel = libroCoppel.getWorksheet('Data');
+        if (!hojaCoppel) {
+            hojaCoppel = libroCoppel.worksheets[2]; }
 
         let procesados = 0;
 

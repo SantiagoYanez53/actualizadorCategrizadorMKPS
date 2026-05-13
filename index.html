@@ -24,6 +24,22 @@
         <div id="respuesta"></div>
     </div>
 
+    <div style="border: .5px solid #ccc; padding: 20px; margin-top: 20px; border-radius: 8px; background-color: white;">
+    <h2>Módulo 2: Generador de Catálogos (Coppel & Walmart)</h2>
+    <form id="formCatalogo">
+        <label>Sube tu Archivo Maestro de Productos Nuevos (.xlsx):</label><br><br>
+        <input type="file" id="maestroCatalogo" accept=".xlsx" required /><br><br>
+        <button type="submit" style="background-color: #007bff; color: white; padding: 10px 15px; border: none; font-weight: bold; cursor: pointer;">
+            Generar Catálogos Oficiales
+        </button>
+    </form>
+    
+    <div id="resultadoCatalogo" style="margin-top: 20px; display: none;">
+        <p id="mensajeCatalogo" style="color: green; font-weight: bold;"></p>
+        <div id="enlacesDescarga"></div>
+    </div>
+</div>
+
     <script>
         document.getElementById('formStock').addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -76,6 +92,63 @@
                 divRespuesta.innerHTML = `<p style="color: red;">Error al conectar con el backend.</p>`;
             }
         });
+
+        document.getElementById('formCatalogo').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const inputArchivo = document.getElementById('maestroCatalogo');
+    const resultadoDiv = document.getElementById('resultadoCatalogo');
+    const mensajeP = document.getElementById('mensajeCatalogo');
+    const enlacesDiv = document.getElementById('enlacesDescarga');
+    
+    if (!inputArchivo.files[0]) return;
+
+    // Preparamos los datos para enviarlos al backend
+    const formData = new FormData();
+    formData.append('maestro', inputArchivo.files[0]);
+
+    mensajeP.style.color = 'blue';
+    mensajeP.textContent = 'Procesando Excel, cruzando SAT e inyectando plantillas... ⏳';
+    resultadoDiv.style.display = 'block';
+    enlacesDiv.innerHTML = '';
+
+    try {
+        const response = await fetch('/api/catalogo/generar', {
+            method: 'POST',
+            body: formData
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || 'Error al procesar el archivo');
+        }
+
+        // Mostramos éxito y generamos los botones de descarga
+        mensajeP.style.color = 'green';
+        mensajeP.textContent = `✅ ¡Éxito! Se procesaron ${data.procesados} productos.`;
+
+        enlacesDiv.innerHTML = `
+            <a href="/uploads/${data.archivos.coppel}" target="_blank">
+                <button style="background-color: #ffc107; color: black; font-weight: bold; padding: 8px 12px; margin-right: 10px; border: none; cursor: pointer;">
+                    📥 Descargar Catálogo Coppel
+                </button>
+            </a>
+            <a href="/uploads/${data.archivos.walmart}" target="_blank">
+                <button style="background-color: #17a2b8; color: white; font-weight: bold; padding: 8px 12px; border: none; cursor: pointer;">
+                    📥 Descargar Catálogo Walmart
+                </button>
+            </a>
+        `;
+        
+        // Limpiamos el input
+        inputArchivo.value = '';
+
+    } catch (error) {
+        mensajeP.style.color = 'red';
+        mensajeP.textContent = `❌ ${error.message}`;
+    }
+});
     </script>
 </body>
 </html>
