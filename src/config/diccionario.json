@@ -1,1 +1,9 @@
- 
+ [
+    {
+        "palabras": ["bateria", "guitarra"],
+        "coppel": "Instrumentos Musicales/Accesorios Generales Para Hacer Música",
+        "walmart": "Instrumentos Musicales",
+        "pestana_walmart": "Instrumentos Musicales",
+        "sat": "60131302"
+    }
+]
