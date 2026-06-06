@@ -15,6 +15,8 @@ app.use(express.static(path.join(__dirname, '../')));
 
 const apiRoutes = require('./routes/api');
 app.use ('/api', apiRoutes);
+const configRoutes = require('./routes/configRoutes');
+app.use('/api/config', configRoutes);
 
 app.use('/api/catalogo', catalogRoutes);
 

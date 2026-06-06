@@ -20,11 +20,42 @@ const COPPEL_CAT = {
     ANCHO_PAQ: 45, SAT: 46
 };
 
-const WALMART_COL = {
-    SKU: 4, UPC: 6, TITULO: 7, MARCA: 8, IMG_MAIN: 9,
-    FEATURES: 10, DESC: 11, PRECIO: 12, FABRICANTE: 13, SAT: 14,
-    GARANTIA: 24, ORIGEN: 28, CONTENIDO: 29, COLOR: 32, IMG_SEC_START: 34,
-    HAZARD: 88, NOM: 90
+const WALMART_CONFIGS = {
+    'accesorios de instrumentos': {
+        SKU: 4, UPC: 6, TITULO: 7, MARCA: 8, IMG_MAIN: 9,
+        FEATURES: 10, DESC: 11, PRECIO: 12, FABRICANTE: 13, SAT: 14,
+        GARANTIA: 24,       // X: "0"
+        ORIGEN: 28,         // AB: "CN- China"
+        CONTENIDO: 29,      // AC: Título
+        COLOR: 32,          // AF: "Multicolor"
+        IMG_SEC_START: 34,  // AH (Fotos en AH, AI, AJ, AK)
+        HAZARD: 88,         // CJ: "No"
+        NOM: 90             // CL: "Sí"
+    },
+    'instrumentos musicales': {
+        SKU: 4, UPC: 6, TITULO: 7, MARCA: 8, IMG_MAIN: 9,
+        FEATURES: 10, DESC: 11, PRECIO: 12, FABRICANTE: 13, SAT: 14,
+        GARANTIA: 24,       // X: "0"
+        ORIGEN: 28,         // AB: "CN- China"
+        CONTENIDO: 29,      // AC: Título
+        MATERIAL: 31,       // AE: Condicional (Madera / Plástico)
+        CANT_AN: 40,        // AN: "1"
+        IMG_SEC_START: 41,  // AO (Fotos en AO, AP, AQ, AR)
+        HAZARD: 108,        // DD: "No"
+        NOM: 110            // DF: "Sí"
+    },
+    'amplificadores y audio': { 
+        SKU: 4, UPC: 6, TITULO: 7, MARCA: 8, IMG_MAIN: 9,
+        FEATURES: 10, DESC: 11, PRECIO: 12, FABRICANTE: 13, SAT: 14,
+        GARANTIA_AA: 27,    // AA: "1"
+        ORIGEN: 28,         // AB: "CN- China"
+        CONTENIDO: 29,      // AC: Título
+        CANT_AE: 31,        // AE: "1"
+        COLOR: 32,          // AF: "Multicolor"
+        IMG_SEC_START: 42,  // AP (Fotos en AP, AQ, AR, AS)
+        HAZARD: 94,         // CP: "No"
+        NOM: 96             // CR: "Sí"
+    }
 };
 
 // ============================================================================
@@ -87,7 +118,7 @@ async function generarCatalogos(req, res) {
         let procesados = 0;
 
         // ====================================================================
-        // 3. RECORRIDO DEL ARCHIVO MAESTRO
+        // 3. RECORRIDO DEL ARCHIVO MAESTRO 
         // ====================================================================
         hojaMaestro.eachRow((row, rowNumber) => {
             if (rowNumber > 1) { 
@@ -193,41 +224,66 @@ async function generarCatalogos(req, res) {
                         }
                     });
 
-                    // Respaldo seguro: Si no existe, tomamos la última hoja disponible para no sobreescribir instrucciones
+                    // Respaldo por si hay un error tipográfico en el JSON
                     if (!hojaWalmart) {
                         hojaWalmart = libroWalmart.worksheets[libroWalmart.worksheets.length - 1];
                     }
 
                     const nuevaFilaWmt = hojaWalmart.addRow([]);
 
-                    const celdaSkuWmt = nuevaFilaWmt.getCell(WALMART_COL.SKU);
-                    celdaSkuWmt.value = skuLimpio;
-                    celdaSkuWmt.numFmt = '@';
+                    // Obtenemos el mapa de columnas de la pestaña, por defecto 'accesorios de instrumentos'
+                    const conf = WALMART_CONFIGS[pestanaBuscada] || WALMART_CONFIGS['accesorios de instrumentos'];
 
-                    const celdaUpcWmt = nuevaFilaWmt.getCell(WALMART_COL.UPC);
-                    celdaUpcWmt.value = upcLimpio;
-                    celdaUpcWmt.numFmt = '@';
+                    // Blindaje SKU y UPC
+                    if (conf.SKU) {
+                        const celdaSkuWmt = nuevaFilaWmt.getCell(conf.SKU);
+                        celdaSkuWmt.value = skuLimpio;
+                        celdaSkuWmt.numFmt = '@';
+                    }
+                    if (conf.UPC) {
+                        const celdaUpcWmt = nuevaFilaWmt.getCell(conf.UPC);
+                        celdaUpcWmt.value = upcLimpio;
+                        celdaUpcWmt.numFmt = '@';
+                    }
 
-                    nuevaFilaWmt.getCell(WALMART_COL.TITULO).value = tituloLimpio;
-                    nuevaFilaWmt.getCell(WALMART_COL.MARCA).value = marca;
-                    nuevaFilaWmt.getCell(WALMART_COL.IMG_MAIN).value = img1;
-                    nuevaFilaWmt.getCell(WALMART_COL.FEATURES).value = desc;
-                    nuevaFilaWmt.getCell(WALMART_COL.DESC).value = desc;
-                    nuevaFilaWmt.getCell(WALMART_COL.PRECIO).value = precio;
-                    nuevaFilaWmt.getCell(WALMART_COL.FABRICANTE).value = marca;
-                    nuevaFilaWmt.getCell(WALMART_COL.SAT).value = codigoSAT;
-                    
-                    nuevaFilaWmt.getCell(WALMART_COL.GARANTIA).value = '0';
-                    nuevaFilaWmt.getCell(WALMART_COL.ORIGEN).value = 'CN- China';
-                    nuevaFilaWmt.getCell(WALMART_COL.CONTENIDO).value = tituloLimpio;
-                    nuevaFilaWmt.getCell(WALMART_COL.COLOR).value = 'Multicolor';
-                    nuevaFilaWmt.getCell(WALMART_COL.HAZARD).value = 'No';
-                    nuevaFilaWmt.getCell(WALMART_COL.NOM).value = 'Sí';
+                    // Datos generales (Idénticos para las 3 pestañas)
+                    if (conf.TITULO) nuevaFilaWmt.getCell(conf.TITULO).value = tituloLimpio;
+                    if (conf.MARCA) nuevaFilaWmt.getCell(conf.MARCA).value = marca;
+                    if (conf.IMG_MAIN) nuevaFilaWmt.getCell(conf.IMG_MAIN).value = img1;
+                    if (conf.FEATURES) nuevaFilaWmt.getCell(conf.FEATURES).value = desc;
+                    if (conf.DESC) nuevaFilaWmt.getCell(conf.DESC).value = desc;
+                    if (conf.PRECIO) nuevaFilaWmt.getCell(conf.PRECIO).value = precio;
+                    if (conf.FABRICANTE) nuevaFilaWmt.getCell(conf.FABRICANTE).value = marca;
+                    if (conf.SAT) nuevaFilaWmt.getCell(conf.SAT).value = codigoSAT;
+                    if (conf.ORIGEN) nuevaFilaWmt.getCell(conf.ORIGEN).value = 'CN- China';
+                    if (conf.CONTENIDO) nuevaFilaWmt.getCell(conf.CONTENIDO).value = tituloLimpio;
+                    if (conf.HAZARD) nuevaFilaWmt.getCell(conf.HAZARD).value = 'No';
+                    if (conf.NOM) nuevaFilaWmt.getCell(conf.NOM).value = 'Sí';
 
-                    if (img2) nuevaFilaWmt.getCell(WALMART_COL.IMG_SEC_START).value = img2;
-                    if (img3) nuevaFilaWmt.getCell(WALMART_COL.IMG_SEC_START + 1).value = img3;
-                    if (img4) nuevaFilaWmt.getCell(WALMART_COL.IMG_SEC_START + 2).value = img4;
-                    if (img5) nuevaFilaWmt.getCell(WALMART_COL.IMG_SEC_START + 3).value = img5;
+                    // Valores que varían según la pestaña
+                    if (conf.COLOR) nuevaFilaWmt.getCell(conf.COLOR).value = 'Multicolor';
+                    if (conf.GARANTIA) nuevaFilaWmt.getCell(conf.GARANTIA).value = '0';
+                    if (conf.GARANTIA_AA) nuevaFilaWmt.getCell(conf.GARANTIA_AA).value = '1';
+                    if (conf.CANT_AE) nuevaFilaWmt.getCell(conf.CANT_AE).value = '1';
+                    if (conf.CANT_AN) nuevaFilaWmt.getCell(conf.CANT_AN).value = '1';
+
+                    // 🤖 Condicional Inteligente para el Material (Solo en Instrumentos Musicales)
+                    if (conf.MATERIAL) {
+                        const regexMadera = /(batería|bateria|guitarra|bajo)/i;
+                        if (regexMadera.test(tituloLimpio)) {
+                            nuevaFilaWmt.getCell(conf.MATERIAL).value = 'Madera';
+                        } else {
+                            nuevaFilaWmt.getCell(conf.MATERIAL).value = 'Plástico';
+                        }
+                    }
+
+                    // Inyección de Imágenes Secundarias desplazables
+                    if (conf.IMG_SEC_START) {
+                        if (img2) nuevaFilaWmt.getCell(conf.IMG_SEC_START).value = img2;
+                        if (img3) nuevaFilaWmt.getCell(conf.IMG_SEC_START + 1).value = img3;
+                        if (img4) nuevaFilaWmt.getCell(conf.IMG_SEC_START + 2).value = img4;
+                        if (img5) nuevaFilaWmt.getCell(conf.IMG_SEC_START + 3).value = img5;
+                    }
 
                     procesados++;
                 }

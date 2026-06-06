@@ -40,6 +40,29 @@
     </div>
 </div>
 
+<div style="border: 1px solid #6c757d; padding: 20px; margin-top: 20px; border-radius: 8px; background-color: #f8f9fa;">
+    <h3>⚙️ Gestor de Plantillas Base</h3>
+    <p style="font-size: 14px; color: #555;">Sube un archivo aquí solo cuando necesites reemplazar los moldes internos del sistema (ej. cuando Coppel o Walmart te den un archivo con SKUs nuevos).</p>
+    
+    <form id="formPlantillas">
+        <label>1. Selecciona qué plantilla vas a reemplazar:</label><br>
+        <select id="tipoPlantilla" style="padding: 5px; margin-bottom: 10px; width: 100%; max-width: 300px;">
+            <option value="coppel_stock">Plantilla Stock Coppel</option>
+            <option value="walmart_stock">Plantilla Stock Walmart</option>
+            <option value="coppel_catalogo">Plantilla Catálogo Coppel</option>
+            <option value="walmart_catalogo">Plantilla Catálogo Walmart</option>
+        </select><br><br>
+
+        <label>2. Sube el nuevo archivo vacío (.xlsx):</label><br>
+        <input type="file" id="archivoPlantilla" accept=".xlsx" required /><br><br>
+        
+        <button type="submit" style="background-color: #6c757d; color: white; padding: 8px 15px; border: none; font-weight: bold; cursor: pointer;">
+            Sobrescribir Plantilla
+        </button>
+    </form>
+    <p id="mensajePlantilla" style="margin-top: 10px; font-weight: bold;"></p>
+</div>
+
     <script>
         document.getElementById('formStock').addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -149,6 +172,41 @@
         mensajeP.textContent = `❌ ${error.message}`;
     }
 });
+document.getElementById('formPlantillas').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const inputArchivo = document.getElementById('archivoPlantilla');
+    const selectTipo = document.getElementById('tipoPlantilla');
+    const mensajeP = document.getElementById('mensajePlantilla');
+    
+    if (!inputArchivo.files[0]) return;
+
+    const formData = new FormData();
+    formData.append('plantilla', inputArchivo.files[0]);
+    formData.append('tipo', selectTipo.value);
+
+    mensajeP.style.color = 'blue';
+    mensajeP.textContent = 'Actualizando plantilla en el servidor... ⏳';
+
+    try {
+        const response = await fetch('/api/config/plantilla', {
+            method: 'POST',
+            body: formData
+        });
+
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Error al reemplazar');
+
+        mensajeP.style.color = 'green';
+        mensajeP.textContent = `✅ ¡Listo! La plantilla de ${selectTipo.options[selectTipo.selectedIndex].text} ha sido actualizada.`;
+        inputArchivo.value = ''; // Limpiar el input
+
+    } catch (error) {
+        mensajeP.style.color = 'red';
+        mensajeP.textContent = `❌ ${error.message}`;
+    }
+});
+
     </script>
 </body>
 </html>
